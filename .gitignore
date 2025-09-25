@@ -30,3 +30,13 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# licer binay 
+licer
+
+
+# files we don't want to share 
+POLICY.md
+
+
+
