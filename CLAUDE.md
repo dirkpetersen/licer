@@ -337,18 +337,172 @@ When processing a repository, Licer checks for an existing `LICENSE` file in the
 [LICENSE] Skipped LICENSE management (LICENSE.orig exists)
 ```
 
+## Git Pre-Commit Hook Integration
+
+### Purpose
+Automatically add license headers to newly created files before they are committed, ensuring all new code is properly licensed from the moment it enters the repository.
+
+### CLI Options
+
+#### `--hook` Flag (Hook Management)
+Toggles the activation/deactivation of the Git pre-commit hook:
+- `licer --hook` - Install or reinstall the pre-commit hook
+- `licer --hook --remove` - Uninstall the pre-commit hook
+
+#### `--pre-commit` Flag (Hook Execution Mode)  
+Special mode used by the pre-commit hook to process only newly staged files:
+- Only processes files that are being added to the repository (git status 'A')
+- Uses `git diff --cached --name-status | grep '^A'` to find new files
+- Skips files that are modified ('M') since they may already have headers
+- Runs silently without interactive prompts
+- Does not manage LICENSE files (to avoid conflicts during commit)
+
+### Behavioral Rules
+
+#### Interactive Hook Activation
+When `licer` is run with no options in a repository:
+1. Check if pre-commit hook is installed
+2. If not installed, prompt user: "Install pre-commit hook to automatically license new files? (y/N): "
+3. If user responds 'y' or 'Y', install the hook
+4. Continue with normal repository processing
+
+#### Unattended Mode
+When `licer --git-folder <path>` is used:
+- **Never prompt** for hook installation
+- **Never install hooks** automatically
+- Process the repository silently
+- Used for batch processing or CI/CD scenarios
+
+### Hook Implementation
+
+#### Hook Script Content
+The pre-commit hook script (`.git/hooks/pre-commit`):
+```bash
+#!/bin/bash
+
+# Get the directory where licer binary is located
+LICER_PATH="$(which licer)"
+if [ -z "$LICER_PATH" ]; then
+    # Try to find licer in common locations
+    for path in "./licer" "../licer" "$(git rev-parse --show-toplevel)/licer"; do
+        if [ -x "$path" ]; then
+            LICER_PATH="$path"
+            break
+        fi
+    done
+fi
+
+if [ -z "$LICER_PATH" ]; then
+    echo "Warning: licer not found, skipping header check"
+    exit 0
+fi
+
+# Run licer in pre-commit mode
+"$LICER_PATH" --pre-commit --verbose=false
+
+exit 0
+```
+
+#### Hook Installation Process
+1. Check if `.git/hooks/pre-commit` exists
+2. If exists, back up to `.git/hooks/pre-commit.backup` 
+3. Create new pre-commit hook with licer integration
+4. Make hook executable (`chmod +x`)
+5. Report installation status
+
+#### Hook Detection
+Check for hook installation by:
+1. Verify `.git/hooks/pre-commit` exists and is executable
+2. Check if content contains "licer --pre-commit" 
+3. If both conditions met, hook is considered installed
+
+### File Processing Logic
+
+#### Staged File Detection
+```go
+func getStagedNewFiles() ([]string, error) {
+    cmd := exec.Command("git", "diff", "--cached", "--name-status")
+    output, err := cmd.Output()
+    if err != nil {
+        return nil, err
+    }
+    
+    var newFiles []string
+    lines := strings.Split(string(output), "\n")
+    
+    for _, line := range lines {
+        if strings.HasPrefix(line, "A\t") {
+            filename := strings.TrimPrefix(line, "A\t")
+            newFiles = append(newFiles, filename)
+        }
+    }
+    
+    return newFiles, nil
+}
+```
+
+#### Pre-commit Processing Flow
+1. Get list of staged files with 'A' (added) status
+2. For each new file:
+   - Check if file type is supported
+   - Check if file already has header (skip if yes)
+   - Add appropriate header based on user config
+   - Stage the modified file (`git add <file>`)
+3. Report results silently (only errors to stderr)
+4. Exit with code 0 for success, 1 for errors
+
+### Command Examples
+
+```bash
+# Install pre-commit hook
+licer --hook
+
+# Uninstall pre-commit hook  
+licer --hook --remove
+
+# Manual pre-commit processing (used by hook)
+licer --pre-commit
+
+# Normal processing (may prompt for hook installation)
+licer
+
+# Batch mode (no hook prompts)
+licer --git-folder /path/to/repo
+```
+
+### Safety & Error Handling
+
+#### Hook Installation Safety
+- **Backup existing hooks** before replacement
+- **Validate Git repository** before hook installation
+- **Check write permissions** in .git/hooks directory
+- **Verify licer binary exists** and is executable
+
+#### Pre-commit Mode Safety
+- **Non-interactive**: No prompts during commit process
+- **Fast execution**: Only process newly added files
+- **Minimal output**: Silent unless errors occur
+- **Graceful failure**: Don't block commits on minor errors
+
+#### Error Scenarios
+- **Licer not found**: Hook warns but allows commit to proceed
+- **File processing error**: Log warning, continue with other files
+- **Permission error**: Report to stderr, exit with code 1
+
 ### Future Enhancements
 
 1. Add --dry-run flag to preview changes
 2. Support custom license types via config
-3. Add --exclude flag for custom exclusion patterns
+3. Add --exclude flag for custom exclusion patterns  
 4. Support for multi-line copyright (contributors)
-5. Integration with git hooks
-6. Progress bar for large repositories
-7. License detection based on LICENSE file in repo
-8. Support for different header styles per subdirectory
-9. Add --remove-all flag for admin override (with confirmation prompt)
-10. Add --remove-match="pattern" for custom removal criteria
-11. Add --skip-license flag to disable LICENSE file management 
+5. Progress bar for large repositories
+6. License detection based on LICENSE file in repo
+7. Support for different header styles per subdirectory
+8. Add --remove-all flag for admin override (with confirmation prompt)
+9. Add --remove-match="pattern" for custom removal criteria
+10. Add --skip-license flag to disable LICENSE file management
+11. Add hook configuration options in licer.yml
+12. Support for other Git hooks (post-commit, pre-push)
+13. Integration with popular pre-commit frameworks 
 
 

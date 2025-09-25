@@ -79,6 +79,12 @@ licer --force
 # Remove headers (safe mode - only removes headers you own)
 licer --remove
 
+# Install Git pre-commit hook (automatically license new files)
+licer --hook
+
+# Uninstall pre-commit hook
+licer --hook --remove
+
 # Quiet mode
 licer --verbose=false
 
@@ -194,6 +200,33 @@ Licer automatically manages the root LICENSE file:
 3. **Third-party LICENSE**: Renames to LICENSE.orig, creates new LICENSE
 4. **LICENSE.orig exists**: Preserves both files unchanged
 
+### Git Pre-Commit Hooks
+Licer can automatically license new files as they're committed:
+
+```bash
+# Install pre-commit hook
+licer --hook
+
+# Now every time you commit, new files get headers automatically
+git add new_file.py
+git commit -m "Add new feature"  # new_file.py gets header added automatically
+```
+
+**Hook Behavior:**
+- **New files only**: Only processes files being added (`git status A`)
+- **Non-interactive**: Runs silently during commits
+- **Auto-staging**: Modified files are automatically re-staged
+- **Safe failure**: Warns but doesn't block commits if licer unavailable
+
+**Interactive Installation:**
+When you run `licer` with no options, it will ask:
+```
+Install pre-commit hook to automatically license new files? (y/N): 
+```
+
+**Unattended Mode:**
+Using `--git-folder` never prompts for hook installation (for automation/CI)
+
 ## 📋 Command Reference
 
 | Flag | Description |
@@ -201,6 +234,9 @@ Licer automatically manages the root LICENSE file:
 | `--git-folder` | Path to Git repository (default: current directory) |
 | `--force` | Force replacement of existing headers (including third-party) |
 | `--remove` | Remove headers safely (only removes headers you own) |
+| `--hook` | Install Git pre-commit hook for automatic licensing |
+| `--hook --remove` | Uninstall Git pre-commit hook |
+| `--pre-commit` | Pre-commit mode: process only newly staged files |
 | `--verbose` | Verbose output (default: true) |
 | `--help` | Show help message |
 

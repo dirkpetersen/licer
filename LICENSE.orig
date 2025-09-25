@@ -1,142 +1,4 @@
-// Copyright 2025 Oregon State University
-//
-// Licensed under the Apache License, Version 2.0.
-// See the LICENSE file for details.
-// SPDX-License-Identifier: Apache-2.0
-//
-// Developed by: Dirk Petersen
-//               UIT/ARCS
-
-package main
-
-import (
-	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
-)
-
-func ManageLicenseFile(repoRoot string, config *Config, verbose bool) error {
-	licensePath := filepath.Join(repoRoot, "LICENSE")
-	licenseOrigPath := filepath.Join(repoRoot, "LICENSE.orig")
-	
-	// Check if LICENSE file exists
-	_, err := os.Stat(licensePath)
-	licenseExists := !os.IsNotExist(err)
-	
-	// Check if LICENSE.orig already exists
-	_, err = os.Stat(licenseOrigPath)
-	licenseOrigExists := !os.IsNotExist(err)
-	
-	if !licenseExists {
-		// No LICENSE file exists, create one
-		if verbose {
-			fmt.Printf("[LICENSE] Creating LICENSE file (%s)\n", GetLicenseType(config))
-		}
-		return createLicenseFile(licensePath, config)
-	}
-	
-	// LICENSE file exists, check if it contains SPDX identifier
-	hasSPDX, err := licenseFileHasSPDX(licensePath)
-	if err != nil {
-		if verbose {
-			fmt.Printf("[LICENSE] Error reading LICENSE file: %v\n", err)
-		}
-		return nil // Don't fail the whole process
-	}
-	
-	if hasSPDX {
-		// LICENSE file already has SPDX, leave it alone
-		if verbose {
-			fmt.Printf("[LICENSE] LICENSE file already compatible (contains SPDX identifier)\n")
-		}
-		return nil
-	}
-	
-	// LICENSE file exists but no SPDX identifier
-	if licenseOrigExists {
-		// LICENSE.orig already exists, don't touch anything
-		if verbose {
-			fmt.Printf("[LICENSE] Skipped LICENSE management (LICENSE.orig already exists)\n")
-		}
-		return nil
-	}
-	
-	// Rename LICENSE to LICENSE.orig and create new LICENSE
-	if verbose {
-		fmt.Printf("[LICENSE] Renaming LICENSE to LICENSE.orig, creating new LICENSE (%s)\n", GetLicenseType(config))
-	}
-	
-	err = os.Rename(licensePath, licenseOrigPath)
-	if err != nil {
-		return fmt.Errorf("failed to rename LICENSE to LICENSE.orig: %w", err)
-	}
-	
-	err = createLicenseFile(licensePath, config)
-	if err != nil {
-		// Try to restore original file if creation fails
-		os.Rename(licenseOrigPath, licensePath)
-		return fmt.Errorf("failed to create new LICENSE file: %w", err)
-	}
-	
-	return nil
-}
-
-func licenseFileHasSPDX(licensePath string) (bool, error) {
-	content, err := os.ReadFile(licensePath)
-	if err != nil {
-		return false, err
-	}
-	
-	contentLower := strings.ToLower(string(content))
-	return strings.Contains(contentLower, "spdx-license-identifier"), nil
-}
-
-func createLicenseFile(licensePath string, config *Config) error {
-	var licenseContent string
-	
-	year := time.Now().Year()
-	
-	switch config.DefaultRole {
-	case "Student":
-		licenseContent = generateMITLicense(config.FullName, year)
-	case "Faculty", "Staff":
-		licenseContent = generateApache2License(year)
-	default:
-		licenseContent = generateMITLicense(config.FullName, year)
-	}
-	
-	return os.WriteFile(licensePath, []byte(licenseContent), 0644)
-}
-
-func generateMITLicense(fullName string, year int) string {
-	return fmt.Sprintf(`MIT License
-
-Copyright (c) %d %s
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-`, year, fullName)
-}
-
-func generateApache2License(year int) string {
-	return fmt.Sprintf(`                                 Apache License
+                                 Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
 
@@ -155,7 +17,7 @@ func generateApache2License(year int) string {
       control with that entity. For the purposes of this definition,
       "control" means (i) the power, direct or indirect, to cause the
       direction or management of such entity, whether by contract or
-      otherwise, or (ii) ownership of fifty percent (50%%) or more of the
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
       outstanding shares, or (iii) beneficial ownership of such entity.
 
       "You" (or "Your") shall mean an individual or Legal Entity
@@ -271,7 +133,7 @@ func generateApache2License(year int) string {
       this License, without any additional terms or conditions.
       Notwithstanding the above, nothing herein shall supersede or modify
       the terms of any separate license agreement you may have executed
-      with the Licensor regarding such Contributions.
+      with Licensor regarding such Contributions.
 
    6. Trademarks. This License does not grant permission to use the trade
       names, trademarks, service marks, or product names of the Licensor,
@@ -324,7 +186,7 @@ func generateApache2License(year int) string {
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright %d Oregon State University
+   Copyright [yyyy] [name of copyright owner]
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -337,5 +199,3 @@ func generateApache2License(year int) string {
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-`, year)
-}
