@@ -55,7 +55,7 @@ Supports 25+ programming languages and file types:
 ```bash
 git clone https://github.com/your-org/licer.git
 cd licer
-go build -o licer
+go build -o licer ./src
 ```
 
 ## 📖 Usage
