@@ -4,7 +4,8 @@
 
 Licer is a powerful command-line tool that automatically adds, manages, and removes copyright headers in source code files across entire Git repositories. Built specifically for Oregon State University's intellectual property requirements, it ensures consistent licensing across all your projects.
 
-<img width="300" height="300" alt="Is this a real louse?" src="https://github.com/user-attachments/assets/b952342f-580f-459a-a2a4-b10b54d17aa7" />
+<img width="814" height="347" alt="image" src="https://github.com/user-attachments/assets/93dd2d0f-986a-41c1-8993-c3ef47d7b662" />
+
 
 
 ## ✨ Features
