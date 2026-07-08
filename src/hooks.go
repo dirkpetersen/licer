@@ -170,13 +170,16 @@ func isHookInstalled(repoRoot string) bool {
 		return false // Not executable
 	}
 	
-	// Check if it contains licer integration
+	// Check if it contains licer integration. The installed script invokes
+	// licer via "$LICER_PATH" --pre-commit, so match the flag and the licer
+	// marker separately rather than the literal string "licer --pre-commit".
 	content, err := os.ReadFile(hookPath)
 	if err != nil {
 		return false
 	}
-	
-	return strings.Contains(string(content), "licer --pre-commit")
+
+	text := strings.ToLower(string(content))
+	return strings.Contains(text, "--pre-commit") && strings.Contains(text, "licer")
 }
 
 func installPreCommitHook(repoRoot string, verbose bool) error {

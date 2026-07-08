@@ -31,8 +31,11 @@ go.work.sum
 # .idea/
 # .vscode/
 
-# licer binay 
+# licer binay
 licer
+
+# local test repository (has its own .git)
+test_repo/
 
 
 # files we don't want to share 

@@ -113,27 +113,32 @@ func modifyFile(filename, newHeader string, headerInfo HeaderInfo) error {
 	var newContent []string
 	
 	if headerInfo.HasHeader || headerInfo.HasThirdPartyCopyright {
-		// Replace existing header or third-party copyright
-		if headerInfo.HasShebang {
-			// Keep shebang
-			newContent = append(newContent, lines[0])
-			newContent = append(newContent, "")
-			newContent = append(newContent, strings.Split(newHeader, "\n")...)
-			newContent = append(newContent, "")
-			
-			// Add remaining content after old header
-			if headerInfo.EndLine+1 < len(lines) {
-				newContent = append(newContent, lines[headerInfo.EndLine+1:]...)
-			}
-		} else {
-			// Replace from start
-			newContent = append(newContent, strings.Split(newHeader, "\n")...)
-			newContent = append(newContent, "")
-			
-			// Add remaining content after old header
-			if headerInfo.EndLine+1 < len(lines) {
-				newContent = append(newContent, lines[headerInfo.EndLine+1:]...)
-			}
+		// Replace existing header or third-party copyright, preserving any
+		// content before it (shebang, blank lines, unrelated code)
+		start := headerInfo.StartLine
+		if start < 0 {
+			start = 0
+		}
+		if start > len(lines) {
+			start = len(lines)
+		}
+		end := headerInfo.EndLine
+		if end < start-1 {
+			end = start - 1
+		}
+
+		newContent = append(newContent, lines[:start]...)
+		newContent = append(newContent, strings.Split(newHeader, "\n")...)
+		newContent = append(newContent, "")
+
+		// Skip blank lines that followed the old header so repeated --force
+		// runs don't accumulate blank lines
+		rest := end + 1
+		for rest < len(lines) && strings.TrimSpace(lines[rest]) == "" {
+			rest++
+		}
+		if rest < len(lines) {
+			newContent = append(newContent, lines[rest:]...)
 		}
 	} else {
 		// Add new header

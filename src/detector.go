@@ -212,16 +212,27 @@ func isCommentLine(line string) bool {
 	if trimmed == "" {
 		return false
 	}
-	
-	// Check common comment prefixes
-	commentPrefixes := []string{"//", "#", "/*", "*", ";;", "--", "\"", "REM", "C", "!", "%"}
-	
+
+	// Unambiguous comment prefixes
+	commentPrefixes := []string{"//", "#", "/*", "*", ";;", "--", "<!--", "(*", "<#"}
+
 	for _, prefix := range commentPrefixes {
 		if strings.HasPrefix(trimmed, prefix) {
 			return true
 		}
 	}
-	
+
+	// Ambiguous prefixes (Fortran "C"/"!", Batch "REM", Vim "\"", Erlang "%"):
+	// require trailing whitespace so ordinary code such as `Config = ...`,
+	// `"""docstring` or `!important` is never mistaken for a comment.
+	ambiguousPrefixes := []string{"REM", "C", "!", "%", "\""}
+
+	for _, prefix := range ambiguousPrefixes {
+		if trimmed == prefix || strings.HasPrefix(trimmed, prefix+" ") || strings.HasPrefix(trimmed, prefix+"\t") {
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -261,21 +272,21 @@ func findThirdPartyCopyrightBlock(filename string) (int, int) {
 			startLine = lineNum - 1 // 0-based
 		}
 		
-		// If we have a start, look for the end of license text
+		// If we have a start, look for the end of license text.
+		// Only comment lines, blank lines, and lines with strong license
+		// phrases extend the block - generic words like "use" or "software"
+		// would swallow real code (e.g. `use std::io;`) under --force.
 		if startLine != -1 {
-			// Consider it part of the license block if it contains license-related keywords
-			if strings.Contains(lineLower, "permission") ||
-			   strings.Contains(lineLower, "license") ||
-			   strings.Contains(lineLower, "software") ||
-			   strings.Contains(lineLower, "rights") ||
-			   strings.Contains(lineLower, "distribute") ||
-			   strings.Contains(lineLower, "modify") ||
-			   strings.Contains(lineLower, "use") ||
-			   strings.Contains(lineLower, "without warranty") ||
-			   strings.Contains(lineLower, "liability") ||
-			   strings.Contains(lineLower, "damages") ||
-			   isCommentLine(scanner.Text()) ||
-			   line == "" {
+			if isCommentLine(scanner.Text()) ||
+			   line == "" ||
+			   strings.Contains(lineLower, "copyright") ||
+			   strings.Contains(lineLower, "permission") ||
+			   strings.Contains(lineLower, "licens") ||
+			   strings.Contains(lineLower, "warrant") ||
+			   strings.Contains(lineLower, "liabilit") ||
+			   strings.Contains(lineLower, "redistribut") ||
+			   strings.Contains(lineLower, "merchantab") ||
+			   strings.Contains(lineLower, "damages") {
 				endLine = lineNum - 1 // 0-based, continue expanding
 			} else {
 				// Found non-license content, end the block

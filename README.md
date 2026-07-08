@@ -52,7 +52,7 @@ Supports 25+ programming languages and file types:
 ## 🚀 Installation
 
 ### Prerequisites
-- Go 1.19 or later
+- Go 1.22 or later
 - Git repository (Licer only works in Git repos)
 
 ### Build from Source
@@ -60,6 +60,11 @@ Supports 25+ programming languages and file types:
 git clone https://github.com/dirkpetersen/licer.git
 cd licer
 go build -o licer ./src
+```
+
+### Run Tests
+```bash
+go test ./src
 ```
 
 ## 📖 Usage
@@ -150,6 +155,20 @@ body {
 }
 ```
 
+### HTML Files (Per-Line Comments)
+```html
+<!-- Copyright 2025 Oregon State University -->
+<!-- -->
+<!-- Licensed under the Apache License, Version 2.0. -->
+<!-- See the LICENSE file for details. -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- -->
+<!-- Developed by: Web Development Team -->
+<!--               UIT/ARCS -->
+
+<!DOCTYPE html>
+```
+
 ### Shell Scripts (Shebang Preserved)
 ```bash
 #!/bin/bash
@@ -199,6 +218,10 @@ Licer automatically manages the root LICENSE file:
 2. **LICENSE with SPDX**: Leaves unchanged
 3. **Third-party LICENSE**: Renames to LICENSE.orig, creates new LICENSE
 4. **LICENSE.orig exists**: Preserves both files unchanged
+
+License and notice files (`LICENSE`, `LICENSE.orig`, `COPYING`, `NOTICE`,
+`AUTHORS`, etc.) never receive comment headers — they are legal documents,
+not source code.
 
 ### Git Pre-Commit Hooks
 Licer can automatically license new files as they're committed:
@@ -255,7 +278,8 @@ Licer provides detailed logging of all operations:
 === Processing Summary ===
 Files processed: 156
 Files modified:  89
-Files skipped:   67
+Files skipped:   66
+Files errored:   1
 =========================
 ```
 
@@ -282,9 +306,8 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 ## 🐛 Issues & Support
 
-- Report bugs: [GitHub Issues](https://github.com/your-org/licer/issues)
+- Report bugs: [GitHub Issues](https://github.com/dirkpetersen/licer/issues)
 - Documentation: See [CLAUDE.md](CLAUDE.md) for implementation details
-- Contact: [Your Contact Information]
 
 ## 🙏 Acknowledgments
 

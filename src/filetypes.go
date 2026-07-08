@@ -74,8 +74,8 @@ var commentStyles = map[string]CommentStyle{
 	".cljs":  {Line: ";;"},
 	".hs":    {Line: "--", BlockStart: "{-", BlockEnd: "-}"},
 	".lhs":   {Line: "--", BlockStart: "{-", BlockEnd: "-}"},
-	".ml":    {Line: "(*", BlockEnd: "*)"},
-	".mli":   {Line: "(*", BlockEnd: "*)"},
+	".ml":    {Line: "(*", BlockStart: "(*", BlockEnd: "*)"},
+	".mli":   {Line: "(*", BlockStart: "(*", BlockEnd: "*)"},
 	".pas":   {Line: "//", BlockStart: "{", BlockEnd: "}"},
 	".pl":    {Line: "#"},
 	".pm":    {Line: "#"},
@@ -103,6 +103,25 @@ var commentStyles = map[string]CommentStyle{
 	".ps1":   {Line: "#", BlockStart: "<#", BlockEnd: "#>"},
 	".psm1":  {Line: "#", BlockStart: "<#", BlockEnd: "#>"},
 	"":       {Line: "#"}, // No extension = shell script
+}
+
+// Extensionless files that must never receive headers: license and notice
+// files are legal documents, not source code.
+var excludedBasenames = map[string]bool{
+	"LICENSE":      true,
+	"LICENCE":      true,
+	"COPYING":      true,
+	"COPYRIGHT":    true,
+	"NOTICE":       true,
+	"AUTHORS":      true,
+	"CONTRIBUTORS": true,
+	"PATENTS":      true,
+	"CHANGELOG":    true,
+	"VERSION":      true,
+}
+
+func isExcludedBasename(filename string) bool {
+	return excludedBasenames[strings.ToUpper(filepath.Base(filename))]
 }
 
 var excludedExtensions = map[string]bool{
@@ -170,9 +189,9 @@ var excludedExtensions = map[string]bool{
 
 func GetCommentStyle(filename string) (CommentStyle, bool) {
 	ext := strings.ToLower(filepath.Ext(filename))
-	
+
 	// Check if file should be excluded
-	if excludedExtensions[ext] {
+	if excludedExtensions[ext] || isExcludedBasename(filename) {
 		return CommentStyle{}, false
 	}
 	
@@ -194,9 +213,9 @@ func GetCommentStyle(filename string) (CommentStyle, bool) {
 
 func ShouldProcessFile(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
-	
-	// Skip excluded extensions
-	if excludedExtensions[ext] {
+
+	// Skip excluded extensions and license/notice files
+	if excludedExtensions[ext] || isExcludedBasename(filename) {
 		return false
 	}
 	
@@ -265,7 +284,20 @@ func FormatHeader(header string, style CommentStyle) string {
 		result = append(result, " */")
 		return strings.Join(result, "\n")
 	}
-	
+
+	// Languages without a true line-comment form (HTML, OCaml): wrap every
+	// line as a complete block comment so each line is valid on its own.
+	if style.BlockEnd != "" && style.Line == style.BlockStart {
+		for _, line := range lines {
+			if strings.TrimSpace(line) == "" {
+				result = append(result, style.BlockStart+" "+style.BlockEnd)
+			} else {
+				result = append(result, style.BlockStart+" "+line+" "+style.BlockEnd)
+			}
+		}
+		return strings.Join(result, "\n")
+	}
+
 	// Use line comments for headers (more consistent)
 	for _, line := range lines {
 		if strings.TrimSpace(line) == "" {

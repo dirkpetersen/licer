@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 )
@@ -93,11 +94,13 @@ func (c *Crawler) processDirectoryRecursive(dir string) error {
 		
 		filename := filepath.Join(dir, entry.Name())
 		result := ProcessFile(filename, c.config, c.forceReplace, c.removeMode, false) // Don't log here to avoid race conditions
-		
+
 		// Update statistics
 		atomic.AddInt64(&c.stats.FilesProcessed, 1)
 		if result.Modified {
 			atomic.AddInt64(&c.stats.FilesModified, 1)
+		} else if strings.HasPrefix(result.Reason, "Error") {
+			atomic.AddInt64(&c.stats.FilesErrored, 1)
 		} else if result.Action == "SKIP" {
 			atomic.AddInt64(&c.stats.FilesSkipped, 1)
 		}
@@ -151,5 +154,6 @@ func (c *Crawler) printStats() {
 	fmt.Printf("Files processed: %d\n", c.stats.FilesProcessed)
 	fmt.Printf("Files modified:  %d\n", c.stats.FilesModified)
 	fmt.Printf("Files skipped:   %d\n", c.stats.FilesSkipped)
+	fmt.Printf("Files errored:   %d\n", c.stats.FilesErrored)
 	fmt.Printf("=========================\n")
 }
